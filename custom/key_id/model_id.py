@@ -1,33 +1,36 @@
-#!/usr/bin/env python3
 import os
-from openai import OpenAI
+import sys
+import openai
+
+
+def get_response(prompt: str, model: str | None = None) -> str:
+    """Call OpenAI ChatCompletion and return the assistant reply."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise EnvironmentError("OPENAI_API_KEY environment variable is not set.")
+    openai.api_key = api_key
+    model = model or os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+    try:
+        response = openai.ChatCompletion.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.7,
+        )
+        return response["choices"][0]["message"]["content"].strip()
+    except Exception as exc:
+        raise
+
 
 def main():
-    token = os.getenv("OPENAI_API_KEY")
-    if not token:
-        raise RuntimeError("Please set OPENAI_API_KEY as an environment variable or repository secret")
-
-    endpoint = "https://models.github.ai/inference"
-    model = "openai/gpt-5-chat"
-
-    client = OpenAI(base_url=endpoint, api_key=token)
-
-    resp = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": "What is the capital of France?"},
-        ],
-        temperature=1.0,
-        top_p=1.0,
-        max_tokens=1000,
-    )
-
-    # The response structure may vary depending on the SDK version
+    prompt = os.getenv("PROMPT", "Hello from repository script (replace this prompt as needed)")
     try:
-        print(resp.choices[0].message.content)
-    except Exception:
-        print(resp)
+        output = get_response(prompt)
+        print(output)
+    except Exception as e:
+        print("Request failed:", e, file=sys.stderr)
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
